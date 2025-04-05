@@ -13,6 +13,7 @@ import {setShowMusicCtrl} from '../stores/store-slice/musicStore';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import {createStackNavigator} from '@react-navigation/stack';
 import BootSplash from 'react-native-bootsplash';
+import MapboxTest from '../pages/MapboxTest';
 
 const Stack = createStackNavigator();
 
@@ -37,33 +38,14 @@ const RootScreen = () => {
         dispatch(setShowMusicCtrl(curRouteName));
       }}>
       <Stack.Navigator>
-        {userToken ? (
-          <Stack.Screen
-            name="Root"
-            component={DrawerScreen}
-            options={{
-              headerShown: Platform.OS === 'ios' ? true : false,
-              headerStatusBarHeight: 0,
-              headerStyle: {
-                backgroundColor: userToken
-                  ? isFullScreen
-                    ? Colors.$backgroundNeutral
-                    : themeColor
-                  : Colors.white,
-              },
-              title: '',
-            }}
-          />
-        ) : (
-          <Stack.Screen
-            name="Login"
-            component={Login}
-            options={{
-              headerShown: false,
-            }}
-          />
-        )}
-
+        <Stack.Screen
+          name="MapboxTest"
+          component={MapboxTest}
+          options={{
+            headerShown: false,
+          }}
+        />
+        
         {/*  公共屏幕 */}
         <Stack.Group
           screenOptions={({navigation}) => ({

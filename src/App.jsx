@@ -14,7 +14,14 @@ import {
   LocalLyric,
 } from './constants/realmModel';
 
+import Mapbox from '@rnmapbox/maps';
+
+Mapbox.setAccessToken('sk.eyJ1IjoiN3huM3VtbHQiLCJhIjoiY205M3Y3bzZuMG11NzJqcXozOTQ5YjB0YSJ9.fk8RU7RNlM0QDj9WUw-84A');
+
 const App = () => {
+
+
+
   return (
     <Provider store={store}>
       <ToastProvider>
