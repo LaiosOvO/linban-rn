@@ -1,145 +1,183 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Platform } from 'react-native';
+import { View, StyleSheet, PermissionsAndroid, Platform, Alert, Text, TouchableOpacity, FlatList } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
+import Geolocation from '@react-native-community/geolocation';
+import BottomNavBar from '../components/BottomNavBar';
+import DrawingTools from '../components/DrawingTools';
+import CommandCenter from '../components/CommandCenter';
 import { Colors } from 'react-native-ui-lib';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Geolocation from '@react-native-community/geolocation';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AnnotationManager from '../components/AnnotationManager';
 
-// 设置 Mapbox token
 Mapbox.setAccessToken('sk.eyJ1IjoiN3huM3VtbHQiLCJhIjoiY205M3Y3bzZuMG11NzJqcXozOTQ5YjB0YSJ9.fk8RU7RNlM0QDj9WUw-84A');
 
-const MODES = {
-  DEFAULT: 'default',
-  ANNOTATIONS: 'annotations',
-  DRAWING: 'drawing',
-  COMMAND_CENTER: 'commandCenter'
-};
-
 const MapboxTest = () => {
-  const [currentLocation, setCurrentLocation] = useState(null);
-  const [currentMode, setCurrentMode] = useState(MODES.DEFAULT);
-  const [annotations, setAnnotations] = useState([]);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [drawingTool, setDrawingTool] = useState(null);
-  const [onlineUsers, setOnlineUsers] = useState({
-    total: 0,
-    forestry: [],
-    patrol: [],
-    harvest: []
+  const [userLocation, setUserLocation] = useState(null);
+  const [showAnnotationManager, setShowAnnotationManager] = useState(false);
+  const [showDrawingTools, setShowDrawingTools] = useState(false);
+  const [showCommandCenter, setShowCommandCenter] = useState(false);
+  const [drawingMode, setDrawingMode] = useState(null);
+  const [drawingPoints, setDrawingPoints] = useState([]);
+  const [savedFeatures, setSavedFeatures] = useState([]);
+  const [drawingStyle, setDrawingStyle] = useState({
+    color: '#4285F4',
+    lineWidth: 3
   });
   const mapRef = useRef(null);
 
-  // 获取当前位置
-  useEffect(() => {
-    if (Platform.OS === 'ios') {
-      Geolocation.requestAuthorization();
-    }
-    
+  // 获取定位权限
+  const getCurrentLocation = () => {
     Geolocation.getCurrentPosition(
-      position => {
-        setCurrentLocation([position.coords.longitude, position.coords.latitude]);
+      (position) => {
+        const { longitude, latitude } = position.coords;
+        setUserLocation([longitude, latitude]);
       },
-      error => console.log(error),
+      (error) => console.log('获取位置失败:', error),
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
     );
-  }, []);
+  };
 
-  // 加载保存的标注
-  useEffect(() => {
-    loadAnnotations();
-  }, []);
-
-  // 模拟获取在线用户数据
-  useEffect(() => {
-    if (currentMode === MODES.COMMAND_CENTER) {
-      fetchOnlineUsers();
-    }
-  }, [currentMode]);
-
-  const loadAnnotations = async () => {
+  const requestLocationPermission = async () => {
     try {
-      const savedAnnotations = await AsyncStorage.getItem('annotations');
-      if (savedAnnotations) {
-        setAnnotations(JSON.parse(savedAnnotations));
+      if (Platform.OS === 'ios') {
+        const auth = await Geolocation.requestAuthorization('whenInUse');
+        if (auth === 'granted') {
+          getCurrentLocation();
+        }
+      } else {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: "位置信息权限",
+            message: "需要获取您的位置信息",
+            buttonNeutral: "稍后询问",
+            buttonNegative: "取消",
+            buttonPositive: "确定"
+          }
+        );
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          getCurrentLocation();
+        }
       }
-    } catch (error) {
-      console.error('Error loading annotations:', error);
+    } catch (err) {
+      console.warn('请求位置权限失败:', err);
     }
   };
 
-  const saveAnnotation = async (newAnnotation) => {
-    try {
-      const updatedAnnotations = [...annotations, newAnnotation];
-      await AsyncStorage.setItem('annotations', JSON.stringify(updatedAnnotations));
-      setAnnotations(updatedAnnotations);
-    } catch (error) {
-      console.error('Error saving annotation:', error);
-    }
+  useEffect(() => {
+    requestLocationPermission();
+  }, []);
+
+  // 处理地图点击事件
+  const handleMapPress = (event) => {
+    if (!drawingMode) return;
+
+    const coordinates = event.geometry.coordinates;
+    if (!coordinates || coordinates.length !== 2) return;
+
+    setDrawingPoints(prev => {
+      const newPoints = [...prev, coordinates];
+      // 实时绘制逻辑
+      if (drawingMode === 'polyline' && newPoints.length >= 2) {
+        console.log('绘制折线坐标:', newPoints);
+      } else if (drawingMode === 'polygon' && newPoints.length >= 3) {
+        console.log('绘制多边形坐标:', newPoints);
+      }
+      return newPoints;
+    });
   };
 
-  // 模拟获取在线用户数据
-  const fetchOnlineUsers = async () => {
-    // 这里应该是实际的API调用
-    const mockData = {
-      total: 42,
-      forestry: [
-        { id: 1, name: '张建国', status: 'online' },
-        // ... 更多用户
-      ],
-      patrol: [
-        { id: 2, name: '李明', status: 'online' },
-        // ... 更多用户
-      ],
-      harvest: [
-        { id: 3, name: '王五', status: 'online' },
-        // ... 更多用户
-      ]
+  // 保存绘图数据
+  const handleSaveDrawing = (drawingInfo) => {
+    if ((drawingMode === 'polyline' && drawingPoints.length < 2) ||
+        (drawingMode === 'polygon' && drawingPoints.length < 3)) {
+      Alert.alert('提示', drawingMode === 'polyline' ? '折线至少需要2个点' : '多边形至少需要3个点');
+      return;
+    }
+
+    let geometry;
+    switch (drawingMode) {
+      case 'marker':
+        geometry = {
+          type: 'Point',
+          coordinates: drawingPoints[0]
+        };
+        break;
+      case 'polyline':
+      case 'polygon':
+        geometry = {
+          type: drawingMode === 'polyline' ? 'LineString' : 'Polygon',
+          coordinates: drawingMode === 'polyline' ? drawingPoints : [drawingPoints.concat(drawingPoints[0])]
+        };
+        break;
+      default:
+        return;
+    }
+
+    const newFeature = {
+      type: 'Feature',
+      geometry,
+      properties: {
+        ...drawingStyle,
+        title: drawingInfo.title,
+        description: drawingInfo.description
+      }
     };
-    setOnlineUsers(mockData);
+
+    setSavedFeatures(prev => [...prev, newFeature]);
+    setDrawingPoints([]);
+    setDrawingMode(null);
+    setShowDrawingTools(false);
   };
 
-  const renderAnnotationManagement = () => {
-    if (currentMode !== MODES.ANNOTATIONS) return null;
-    return (
-      <View style={styles.sidebar}>
-        <Text style={styles.sidebarTitle}>标注管理</Text>
-        <View style={styles.annotationList}>
-          {annotations.map((annotation, index) => (
-            <View key={index} style={styles.annotationItem}>
-              <Text>{annotation.title}</Text>
-              <Text>{new Date(annotation.timestamp).toLocaleString()}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-    );
+  // 取消绘图
+  const handleCancelDrawing = () => {
+    setDrawingPoints([]);
+    setDrawingMode(null);
+    setShowDrawingTools(false);
   };
 
-  const renderDrawingTools = () => {
-    if (currentMode !== MODES.DRAWING) return null;
-    return (
-      <View style={styles.drawingTools}>
-        <Text style={styles.toolsTitle}>绘图工具</Text>
-        {/* 绘图工具UI */}
-      </View>
-    );
+  // 清空地图数据
+  const clearMapData = () => {
+    setDrawingPoints([]);
+    setDrawingMode(null);
+    setSavedFeatures([]);
   };
 
-  const renderCommandCenter = () => {
-    if (currentMode !== MODES.COMMAND_CENTER) return null;
-    return (
-      <View style={styles.commandCenter}>
-        <View style={styles.onlineStats}>
-          <Text style={styles.statsTitle}>在线人数: {onlineUsers.total}/50</Text>
-          <View style={styles.teamStats}>
-            <Text>造林组: {onlineUsers.forestry.length}人</Text>
-            <Text>巡护组: {onlineUsers.patrol.length}人</Text>
-            <Text>采伐组: {onlineUsers.harvest.length}人</Text>
-          </View>
-        </View>
-      </View>
-    );
+  // 处理底部栏按钮点击
+  const handleBottomBarPress = (buttonType) => {
+    switch (buttonType) {
+      case 'layers':
+        setShowAnnotationManager(true);
+        setShowDrawingTools(false);
+        setShowCommandCenter(false);
+        break;
+      case 'location':
+        setShowDrawingTools(true);
+        setShowAnnotationManager(false);
+        setShowCommandCenter(false);
+        break;
+      case 'draw':
+        setShowDrawingTools(true);
+        setShowAnnotationManager(false);
+        setShowCommandCenter(false);
+        break;
+      case 'command':
+        setShowCommandCenter(true);
+        setShowAnnotationManager(false);
+        setShowDrawingTools(false);
+        break;
+      default:
+        break;
+    }
+  };
+
+  // 处理关闭侧边栏
+  const handleClosePanel = () => {
+    setShowAnnotationManager(false);
+    setShowDrawingTools(false);
+    setShowCommandCenter(false);
+    setDrawingMode(null);
   };
 
   return (
@@ -147,46 +185,116 @@ const MapboxTest = () => {
       <Mapbox.MapView
         ref={mapRef}
         style={styles.map}
-        styleURL={Mapbox.StyleURL.Street}>
+        onPress={handleMapPress}
+      >
         <Mapbox.Camera
           zoomLevel={14}
-          centerCoordinate={currentLocation || [121.4737, 31.2304]}
+          centerCoordinate={userLocation || [116.40, 39.90]}
         />
-        {currentLocation && (
+
+        {/* 用户位置标记 */}
+        {userLocation && (
           <Mapbox.PointAnnotation
             id="userLocation"
-            coordinate={currentLocation}
-          />
+            coordinate={userLocation}
+          >
+            <View style={styles.userLocationMarker} />
+          </Mapbox.PointAnnotation>
         )}
-        {/* 渲染标注和绘制的内容 */}
+
+        {/* 实时绘制图形 */}
+        {drawingMode === 'marker' && drawingPoints.length > 0 && (
+          <Mapbox.ShapeSource
+            id="point-source"
+            shape={{
+              type: 'Feature',
+              geometry: {
+                type: 'Point',
+                coordinates: drawingPoints[0]
+              }
+            }}
+          >
+            <Mapbox.CircleLayer
+              id="point-layer"
+              style={{ circleRadius: 8, circleColor: drawingStyle.color }}
+            />
+          </Mapbox.ShapeSource>
+        )}
+
+        {(drawingMode === 'polyline' || drawingMode === 'polygon') && drawingPoints.length >= 2 && (
+          <Mapbox.ShapeSource
+            id="line-source"
+            shape={{
+              type: 'Feature',
+              geometry: {
+                type: drawingMode === 'polyline' ? 'LineString' : 'Polygon',
+                coordinates: drawingMode === 'polyline' ? drawingPoints : [drawingPoints.concat(drawingPoints[0])]
+              }
+            }}
+          >
+            {drawingMode === 'polygon' && (
+              <Mapbox.FillLayer
+                id="polygon-fill"
+                style={{ fillColor: drawingStyle.color, fillOpacity: 0.3 }}
+              />
+            )}
+            <Mapbox.LineLayer
+              id="line-layer"
+              style={{ lineColor: drawingStyle.color, lineWidth: drawingStyle.lineWidth }}
+            />
+          </Mapbox.ShapeSource>
+        )}
+
+        {/* 已保存标注 */}
+        <Mapbox.ShapeSource
+          id="saved-features"
+          shape={{ type: 'FeatureCollection', features: savedFeatures }}
+        >
+          <Mapbox.CircleLayer
+            id="points"
+            filter={['==', ['geometry-type'], 'Point']}
+            style={{ circleRadius: 8, circleColor: ['get', 'color'] }}
+          />
+          <Mapbox.LineLayer
+            id="lines"
+            filter={['==', ['geometry-type'], 'LineString']}
+            style={{ lineColor: ['get', 'color'], lineWidth: ['get', 'lineWidth'] }}
+          />
+          <Mapbox.FillLayer
+            id="polygons"
+            filter={['==', ['geometry-type'], 'Polygon']}
+            style={{ fillColor: ['get', 'color'], fillOpacity: 0.3 }}
+          />
+        </Mapbox.ShapeSource>
       </Mapbox.MapView>
 
-      {renderAnnotationManagement()}
-      {renderDrawingTools()}
-      {renderCommandCenter()}
+      {showAnnotationManager && (
+        <AnnotationManager onClose={handleClosePanel} />
+      )}
 
-      <View style={styles.bottomNav}>
-        <TouchableOpacity 
-          style={styles.navButton}
-          onPress={() => setCurrentMode(MODES.DEFAULT)}>
-          <Icon name="map" size={24} color={currentMode === MODES.DEFAULT ? Colors.primary : Colors.black} />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navButton}
-          onPress={() => setCurrentMode(MODES.ANNOTATIONS)}>
-          <Icon name="bookmark" size={24} color={currentMode === MODES.ANNOTATIONS ? Colors.primary : Colors.black} />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navButton}
-          onPress={() => setCurrentMode(MODES.DRAWING)}>
-          <Icon name="edit" size={24} color={currentMode === MODES.DRAWING ? Colors.primary : Colors.black} />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.navButton}
-          onPress={() => setCurrentMode(MODES.COMMAND_CENTER)}>
-          <Icon name="dashboard" size={24} color={currentMode === MODES.COMMAND_CENTER ? Colors.primary : Colors.black} />
-        </TouchableOpacity>
-      </View>
+      {showDrawingTools && (
+        <DrawingTools
+          visible={showDrawingTools}
+          onClose={handleClosePanel}
+          onToolSelect={(tool) => setDrawingMode(tool)}
+          currentTool={drawingMode}
+          onSave={handleSaveDrawing}
+          onClearMapData={clearMapData}
+          savedFeatures={savedFeatures}
+          onSetSavedFeatures={setSavedFeatures}
+        />
+      )}
+
+      {showCommandCenter && (
+        <CommandCenter onClose={handleClosePanel} />
+      )}
+
+      <BottomNavBar
+        onLayersPress={() => handleBottomBarPress('layers')}
+        onLocationPress={() => handleBottomBarPress('location')}
+        onDrawPress={() => handleBottomBarPress('draw')}
+        onCommandPress={() => handleBottomBarPress('command')}
+      />
     </View>
   );
 };
@@ -198,82 +306,14 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    backgroundColor: Colors.white,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: Colors.grey60,
-  },
-  navButton: {
-    padding: 10,
-  },
-  sidebar: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: '80%',
-    backgroundColor: Colors.white,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: -2, height: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  sidebarTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  annotationList: {
-    flex: 1,
-  },
-  annotationItem: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.grey60,
-  },
-  drawingTools: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    backgroundColor: Colors.white,
-    padding: 16,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  commandCenter: {
-    position: 'absolute',
-    left: 16,
-    top: 16,
-    backgroundColor: Colors.white,
-    padding: 16,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  onlineStats: {
-    marginBottom: 16,
-  },
-  statsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  teamStats: {
-    marginTop: 8,
+  userLocationMarker: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#007AFF',
+    borderWidth: 2,
+    borderColor: 'white',
   },
 });
 
-export default MapboxTest; 
+export default MapboxTest;
