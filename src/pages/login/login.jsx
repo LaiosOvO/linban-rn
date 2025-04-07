@@ -401,6 +401,21 @@ const Login = ({navigation}) => {
           }}
         />
       </View>
+
+      <Button
+        marginT-20
+        label="地图测试"
+        disabled={Butdisabled}
+        backgroundColor={Colors.yellow10}
+        disabledBackgroundColor={Colors.Primary}
+        iconOnRight={true}
+        iconSource={
+          Butdisabled ? () => <ActivityIndicator color={Colors.white} /> : null
+        }
+        onPress={()=>{
+          navigation.push("MapboxTest")
+        }}
+      />
     </View>
   );
 };

@@ -38,13 +38,33 @@ const RootScreen = () => {
         dispatch(setShowMusicCtrl(curRouteName));
       }}>
       <Stack.Navigator>
-        <Stack.Screen
-          name="MapboxTest"
-          component={MapboxTest}
-          options={{
-            headerShown: false,
-          }}
-        />
+    
+        {userToken ? (
+          <Stack.Screen
+            name="Root"
+            component={DrawerScreen}
+            options={{
+              headerShown: Platform.OS === 'ios' ? true : false,
+              headerStatusBarHeight: 0,
+              headerStyle: {
+                backgroundColor: userToken
+                  ? isFullScreen
+                    ? Colors.$backgroundNeutral
+                    : themeColor
+                  : Colors.white,
+              },
+              title: '',
+            }}
+          />
+        ) : (
+          <Stack.Screen
+            name="Login"
+            component={Login}
+            options={{
+              headerShown: false,
+            }}
+          />
+        )}
         
         {/*  公共屏幕 */}
         <Stack.Group
@@ -67,6 +87,14 @@ const RootScreen = () => {
             })}
           />
         </Stack.Group>
+
+        <Stack.Screen
+          name="MapboxTest"
+          component={MapboxTest}
+          options={{
+            headerShown: false,
+          }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );
