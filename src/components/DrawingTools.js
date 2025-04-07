@@ -2,18 +2,39 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, Button, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Colors } from 'react-native-ui-lib';
+import { getLabelUserPage, saveLabelUser, updateLabelUser, deleteLabelUser } from '../api/linban/label';
+// import {useToast} from './commom/Toast';
+// import {useSelector, useDispatch} from 'react-redux';
 
-const DrawingTools = ({ visible, onClose, onToolSelect, onSave, currentTool, onClearMapData, savedFeatures, onSetSavedFeatures }) => {
-  if (!visible) return null;
+// const {showToast} = useToast();
+
+
+const DrawingTools = ({ visible, onClose, onToolSelect, onSave, currentTool, onClearMapData, savedFeatures, onSetSavedFeatures, OutSideCancelSelectDraw }) => {
+  const [userLabel, setUserLabel] = useState([]);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const userInfo = { 
+    id: 1,
+   }
+//   const userInfo = useSelector(state => {
+
+//     console.log(state);
+//     console.log(state.userStore);
+//     return state.userStore.userInfo;
+//   });
+  if (!visible) return null;
 
   const tools = [
     { id: 'marker', name: '标记', icon: 'place' },
     { id: 'polyline', name: '折线', icon: 'timeline' },
     { id: 'polygon', name: '多边形', icon: 'crop-square' },
   ];
+
+  const cancelSelectDraw = () => {
+    console.log("取消绘图")
+    OutSideCancelSelectDraw();
+  }
 
   const handleSave = () => {
     if (!title.trim()) {
@@ -26,6 +47,20 @@ const DrawingTools = ({ visible, onClose, onToolSelect, onSave, currentTool, onC
       description: description.trim()
     });
 
+    let data = {
+        labelName: title.trim(),
+        LabelRemark: description.trim(),
+        dataJson: JSON.stringify(savedFeatures),
+        userId: userInfo.id    
+    }
+
+    const res = saveLabelUser(data);
+    if(res){
+        if(res.code === 0 || res.code === 200){
+            // showToast(res.message, 'error');
+        }
+    }
+
     setTitle('');
     setDescription('');
   };
@@ -33,6 +68,25 @@ const DrawingTools = ({ visible, onClose, onToolSelect, onSave, currentTool, onC
   const clearMapData = () => {
     onClearMapData();
   };
+
+  const dataList = async () => {
+    let param = {
+      page: 1,
+      pageSize: 10,
+      userId: userInfo.id
+    }
+
+    const res = await getLabelUserPage(param);
+    console.log(res);
+    setUserLabel(res.data.list);
+    // showToast("获取数据成功", 'error');
+    }
+
+    const handleSelectGeoJson = (item) => {
+        console.log(item)
+
+    }
+
 
   return (
     <View style={styles.container}>
@@ -91,8 +145,8 @@ const DrawingTools = ({ visible, onClose, onToolSelect, onSave, currentTool, onC
 
       {/* 显示保存的列表 */}
       <ScrollView style={styles.savedFeaturesList}>
-        {savedFeatures.map((feature, index) => (
-          <View key={index} style={styles.featureItem}>
+        {userLabel.map((feature, index) => (
+          <View key={index} style={styles.featureItem} onPress={(item) => handleSelectGeoJson(item)} >
             <Text>{feature.properties.title}</Text>
           </View>
         ))}

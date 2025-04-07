@@ -18,7 +18,10 @@ const MapboxTest = () => {
   const [showCommandCenter, setShowCommandCenter] = useState(false);
   const [drawingMode, setDrawingMode] = useState(null);
   const [drawingPoints, setDrawingPoints] = useState([]);
+
   const [savedFeatures, setSavedFeatures] = useState([]);
+  const [geoJson, setGeoJson] = useState({});
+  
   const [drawingStyle, setDrawingStyle] = useState({
     color: '#4285F4',
     lineWidth: 3
