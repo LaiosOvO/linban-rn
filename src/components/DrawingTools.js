@@ -11,7 +11,6 @@ import { getLabelUserPage, saveLabelUser, updateLabelUser, deleteLabelUser } fro
 
 const DrawingTools = ({ visible, onClose, onToolSelect, onSave, currentTool, onClearMapData, savedFeatures, onSetSavedFeatures, OutSideCancelSelectDraw }) => {
   const [userLabel, setUserLabel] = useState([]);
-
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const userInfo = { 
@@ -26,9 +25,9 @@ const DrawingTools = ({ visible, onClose, onToolSelect, onSave, currentTool, onC
   if (!visible) return null;
 
   const tools = [
-    { id: 'marker', name: '标记', icon: 'place' },
-    { id: 'polyline', name: '折线', icon: 'timeline' },
-    { id: 'polygon', name: '多边形', icon: 'crop-square' },
+    { id: 'marker', name: '标记', icon: 'place' , type: 'Point' },
+    { id: 'polyline', name: '折线', icon: 'timeline', type: 'LineString' },
+    { id: 'polygon', name: '多边形', icon: 'crop-square', type: 'Polygon' },
   ];
 
   const cancelSelectDraw = () => {
@@ -48,10 +47,10 @@ const DrawingTools = ({ visible, onClose, onToolSelect, onSave, currentTool, onC
     });
 
     let data = {
-        labelName: title.trim(),
-        LabelRemark: description.trim(),
-        dataJson: JSON.stringify(savedFeatures),
-        userId: userInfo.id    
+      labelName: title.trim(),
+      LabelRemark: description.trim(),
+      dataJson: JSON.stringify(savedFeatures),
+      userId: userInfo.id    
     }
 
     const res = saveLabelUser(data);
@@ -108,7 +107,7 @@ const DrawingTools = ({ visible, onClose, onToolSelect, onSave, currentTool, onC
                   styles.toolButton,
                   currentTool === tool.id && styles.activeTool
                 ]}
-                onPress={() => onToolSelect(tool.id)}
+                onPress={() => onToolSelect(tool)}
               >
                 <Icon
                   name={tool.icon}
@@ -138,35 +137,38 @@ const DrawingTools = ({ visible, onClose, onToolSelect, onSave, currentTool, onC
             value={description}
             onChangeText={setDescription}
             multiline
-            numberOfLines={4} // 调整行数以适应备注信息
+            numberOfLines={4}
           />
+
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              style={[styles.button, styles.cancelButton]}
+              onPress={clearMapData}
+            >
+              <Text style={styles.cancelButtonText}>取消</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.button, styles.saveButton]}
+              onPress={handleSave}
+            >
+              <Text style={styles.saveButtonText}>保存</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={[styles.sectionTitle, styles.listTitle]}>已保存标注</Text>
+          <View style={styles.savedFeaturesList}>
+            {userLabel.map((feature, index) => (
+              <TouchableOpacity 
+                key={index} 
+                style={styles.featureItem}
+                onPress={() => handleSelectGeoJson(feature)}
+              >
+                <Text style={styles.featureTitle}>{feature.properties.labelName}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </ScrollView>
-
-      {/* 显示保存的列表 */}
-      <ScrollView style={styles.savedFeaturesList}>
-        {userLabel.map((feature, index) => (
-          <View key={index} style={styles.featureItem} onPress={(item) => handleSelectGeoJson(item)} >
-            <Text>{feature.properties.title}</Text>
-          </View>
-        ))}
-      </ScrollView>
-
-      {/* 底部操作按钮 */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={clearMapData}
-        >
-          <Text style={styles.cancelButtonText}>清空地图</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.saveButton}
-          onPress={handleSave}
-        >
-          <Text style={styles.saveButtonText}>保存</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -177,10 +179,14 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     bottom: 0,
-    width: 200,
+    width: 300,
     backgroundColor: 'white',
     padding: 16,
-    elevation: 5
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: -2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   header: {
     flexDirection: 'row',
@@ -236,36 +242,50 @@ const styles = StyleSheet.create({
     height: 80,
     textAlignVertical: 'top'
   },
-  footer: {
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 16,
+    marginBottom: 24
+  },
+  button: {
     flex: 1,
-    gap: 10
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 6
   },
   cancelButton: {
-    padding: 12,
-    backgroundColor: 'white',
-    borderRadius: 8,
-    alignItems: 'center'
-  },
-  cancelButtonText: {
-    color: 'black',
+    backgroundColor: '#f0f0f0'
   },
   saveButton: {
-    padding: 12,
-    backgroundColor: 'blue',
-    borderRadius: 8,
-    alignItems: 'center'
+    backgroundColor: '#4285F4'
+  },
+  cancelButtonText: {
+    color: '#666',
+    fontWeight: '500'
   },
   saveButtonText: {
     color: 'white',
     fontWeight: '500'
   },
+  listTitle: {
+    marginTop: 8
+  },
   savedFeaturesList: {
-    marginTop: 16
+    marginTop: 8
   },
   featureItem: {
     padding: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#ccc'
+    borderBottomColor: '#eee',
+    backgroundColor: '#f8f8f8',
+    borderRadius: 8,
+    marginBottom: 8
+  },
+  featureTitle: {
+    fontSize: 14,
+    color: '#333'
   }
 });
 

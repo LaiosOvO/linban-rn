@@ -18,9 +18,75 @@ const MapboxTest = () => {
   const [showCommandCenter, setShowCommandCenter] = useState(false);
   const [drawingMode, setDrawingMode] = useState(null);
   const [drawingPoints, setDrawingPoints] = useState([]);
+  const [coordinates, setCoordinates] = useState([]);
+  const [drawType, setDrawType] = useState(null);
 
-  const [savedFeatures, setSavedFeatures] = useState([]);
-  const [geoJson, setGeoJson] = useState({});
+  const [geoJson , setGeoJson] = useState({
+    type: 'Feature',
+    geometry: {
+      type: '',
+      coordinates: []  // 天安门位置
+    },
+    properties: {
+      color: '#FF5722',  // 橙色
+      lineWidth: 3,
+      title: '天安门',
+      description: '北京天安门广场'
+    }
+  });
+
+
+  // 默认测试多边形数据
+  const [savedFeatures, setSavedFeatures] = useState([
+    {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [-122.084, 37.421998533333335]  // 天安门位置
+        },
+        properties: {
+          color: '#FF5722',  // 橙色
+          lineWidth: 3,
+          title: '天安门',
+          description: '北京天安门广场'
+        }
+      },
+      {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [-122.084, 37.421998333333335],  // 起点 - 天安门
+            [-122.084, 37.423998333333335]   // 终点 - 故宫附近
+          ]
+        },
+        properties: {
+          color: '#4CAF50',  // 绿色
+          lineWidth: 4,
+          title: '测试直线',
+          description: '从天安门到故宫的测试直线'
+        }
+      },
+    {
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [[
+          [-122.084, 37.421998333333335],  // 顶点1
+          [-122.084, 37.4259981],  // 顶点2
+          [-122.284, 37.424998233333335],  // 顶点3
+          [-122.384, 37.423998433333335],  // 顶点4
+          [-122.084, 37.421998333333335]   // 闭合多边形，回到顶点1
+        ]]
+      },
+      properties: {
+        color: '#FF0000',  // 红色
+        lineWidth: 3,
+        title: '测试多边形',
+        description: '这是一个默认显示的测试多边形'
+      }
+    }
+  ]);
   
   const [drawingStyle, setDrawingStyle] = useState({
     color: '#4285F4',
@@ -34,6 +100,8 @@ const MapboxTest = () => {
       (position) => {
         const { longitude, latitude } = position.coords;
         setUserLocation([longitude, latitude]);
+
+        console.log(userLocation)
       },
       (error) => console.log('获取位置失败:', error),
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 1000 }
@@ -76,18 +144,36 @@ const MapboxTest = () => {
     if (!drawingMode) return;
 
     const coordinates = event.geometry.coordinates;
+    console.log('获取到坐标 \n',coordinates);
     if (!coordinates || coordinates.length !== 2) return;
+    if(drawingMode === 'polygon'){
+        console.log('绘制多边形 \n',drawingPoints,coordinates);
+        if(drawingPoints.length === 0){
+            newPoints = [[[coordinates]]]
+            setDrawingPoints(newPoints);
+            geoJson.geometry.coordinates = [coordinates];
+            setGeoJson(geoJson);
+        } else {
+            newPoints = drawingPoints[0][0];
+            newPoints = [...newPoints, coordinates];
+            newPoints.push(newPoints[0]);
+            setDrawingPoints([[newPoints]]);
+            geoJson.geometry.coordinates = [...geoJson.geometry.coordinates, coordinates];
+            setGeoJson(geoJson);
+        }
+    } else {
 
-    setDrawingPoints(prev => {
-      const newPoints = [...prev, coordinates];
-      // 实时绘制逻辑
-      if (drawingMode === 'polyline' && newPoints.length >= 2) {
-        console.log('绘制折线坐标:', newPoints);
-      } else if (drawingMode === 'polygon' && newPoints.length >= 3) {
-        console.log('绘制多边形坐标:', newPoints);
-      }
-      return newPoints;
-    });
+        setDrawingPoints(prev => {
+            const newPoints = [...prev, coordinates];
+            // 实时绘制逻辑
+            if (drawingMode === 'polyline' && newPoints.length >= 2) {
+              console.log('绘制折线坐标:', newPoints);
+            } else if (drawingMode === 'polygon' && newPoints.length >= 3) {
+              console.log('绘制多边形坐标:', newPoints);
+            }
+            return newPoints;
+          });
+    }
   };
 
   // 保存绘图数据
@@ -192,7 +278,7 @@ const MapboxTest = () => {
       >
         <Mapbox.Camera
           zoomLevel={14}
-          centerCoordinate={userLocation || [116.40, 39.90]}
+          centerCoordinate={userLocation || [116.404, 39.915]}  // 默认中心点设置为测试多边形的中心
         />
 
         {/* 用户位置标记 */}
@@ -248,7 +334,7 @@ const MapboxTest = () => {
           </Mapbox.ShapeSource>
         )}
 
-        {/* 已保存标注 */}
+        {/* 已保存标注 - 这里会显示默认的测试多边形 */}
         <Mapbox.ShapeSource
           id="saved-features"
           shape={{ type: 'FeatureCollection', features: savedFeatures }}
@@ -279,7 +365,12 @@ const MapboxTest = () => {
         <DrawingTools
           visible={showDrawingTools}
           onClose={handleClosePanel}
-          onToolSelect={(tool) => setDrawingMode(tool)}
+          onToolSelect={(tool) => {
+            console.log('绘制类型 \n',tool);
+            geoJson.geometry.type = tool.type;
+            setGeoJson(geoJson);
+            setDrawingMode(tool.id)
+          }}
           currentTool={drawingMode}
           onSave={handleSaveDrawing}
           onClearMapData={clearMapData}
