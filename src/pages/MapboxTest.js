@@ -11,7 +11,7 @@ import AnnotationManager from '../components/AnnotationManager';
 
 Mapbox.setAccessToken('sk.eyJ1IjoiN3huM3VtbHQiLCJhIjoiY205M3Y3bzZuMG11NzJqcXozOTQ5YjB0YSJ9.fk8RU7RNlM0QDj9WUw-84A');
 
-const MapboxTest = () => {
+const MapboxTest = ({navigation}) => {
   const [userLocation, setUserLocation] = useState(null);
   const [showAnnotationManager, setShowAnnotationManager] = useState(false);
   const [showDrawingTools, setShowDrawingTools] = useState(false);
@@ -358,7 +358,7 @@ const MapboxTest = () => {
       </Mapbox.MapView>
 
       {showAnnotationManager && (
-        <AnnotationManager onClose={handleClosePanel} />
+        <AnnotationManager navigation={navigation} onClose={handleClosePanel} />
       )}
 
       {showDrawingTools && (

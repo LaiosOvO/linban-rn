@@ -14,6 +14,7 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import {createStackNavigator} from '@react-navigation/stack';
 import BootSplash from 'react-native-bootsplash';
 import MapboxTest from '../pages/MapboxTest';
+import AddFolder from '../pages/folder/add';
 
 const Stack = createStackNavigator();
 
@@ -93,6 +94,22 @@ const RootScreen = () => {
           component={MapboxTest}
           options={{
             headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="AddFolder"
+          component={AddFolder}
+          options={{
+            headerShown: true,
+            
+            headerStyle: {
+              backgroundColor: '#fff', // 设置导航栏背景颜色
+            },
+            title:"添加收藏夹",
+            headerTintColor: '#000', // 设置标题和按钮颜色
+            headerTitleStyle: {
+              fontWeight: 'bold', // 设置标题字体样式
+            },
           }}
         />
       </Stack.Navigator>
