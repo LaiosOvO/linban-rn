@@ -202,3 +202,6 @@ const _date = dayjs(createdAt).locale(getLocale());
 后台管理：https://gitee.com/zyz1720/himate_vue_backend
 
 项目演示：https://www.bilibili.com/video/BV1gBcVeEErs
+
+### 然后这个是林班的原型图
+https://modao.cc/proto/B3DbS0htstojj41UiRyxfT/sharing?view_mode=device&screen=rbpUgSjMYtkQmD9SN&canvasId=rcUgSuwJbYhIDaZB
