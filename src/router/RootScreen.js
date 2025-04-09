@@ -15,6 +15,7 @@ import {createStackNavigator} from '@react-navigation/stack';
 import BootSplash from 'react-native-bootsplash';
 import MapboxTest from '../pages/MapboxTest';
 import AddFolder from '../pages/folder/add';
+import Search from '../pages/search/history';
 
 const Stack = createStackNavigator();
 
@@ -112,6 +113,23 @@ const RootScreen = () => {
             },
           }}
         />
+        <Stack.Screen
+          name="Search"
+          component={Search}
+          options={{
+            headerShown: true,
+            
+            headerStyle: {
+              backgroundColor: '#fff', // 设置导航栏背景颜色
+            },
+            title:"历史数据",
+            headerTintColor: '#000', // 设置标题和按钮颜色
+            headerTitleStyle: {
+              fontWeight: 'bold', // 设置标题字体样式
+            },
+          }}
+        />
+        
       </Stack.Navigator>
     </NavigationContainer>
   );
