@@ -1,23 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, PermissionsAndroid, Platform, Alert } from 'react-native';
+import { View, StyleSheet, PermissionsAndroid, Platform, Alert, TextInput, TouchableOpacity } from 'react-native';
 import Mapbox from '@rnmapbox/maps';
 import Geolocation from '@react-native-community/geolocation';
+import { useNavigation } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import BottomNavBar from '../components/BottomNavBar';
 import DrawingTools from '../components/DrawingTools';
 import CommandCenter from '../components/CommandCenter';
 import AnnotationManager from '../components/AnnotationManager';
+import { getLabelUserPage, saveLabelUser,deleteLabelUser } from '../api/linban/label/index'
 
 Mapbox.setAccessToken('sk.eyJ1IjoiN3huM3VtbHQiLCJhIjoiY205M3Y3bzZuMG11NzJqcXozOTQ5YjB0YSJ9.fk8RU7RNlM0QDj9WUw-84A');
 
 const MapboxTest = () => {
+    const navigation = useNavigation();
     const [userLocation, setUserLocation] = useState(null);
     const [showAnnotationManager, setShowAnnotationManager] = useState(false);
     const [showDrawingTools, setShowDrawingTools] = useState(false);
     const [showCommandCenter, setShowCommandCenter] = useState(false);
     const [drawingMode, setDrawingMode] = useState(null);
     const [activeGeoJson, setActiveGeoJson] = useState(null);
-    const [savedGeoJsons, setSavedGeoJsons] = useState([]);
-
+    const [savedGeoJsons, setSavedGeoJsons] = useState([
+        {
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [-122.084, 37.421998533333335] },
+            properties: { color: '#FF5722', lineWidth: 3, title: '默认点', description: '默认点标记' }
+        },
+        {
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: [[-122.084, 37.421998333333335], [-122.084, 37.423998333333335]] },
+            properties: { color: '#4CAF50', lineWidth: 4, title: '默认线', description: '默认线段' }
+        },
+        {
+            type: 'Feature',
+            geometry: { type: 'Polygon', coordinates: [[[-122.084, 37.421998333333335], [-122.084, 37.4259981], [-122.284, 37.424998233333335], [-122.384, 37.423998433333335], [-122.084, 37.421998333333335]]] },
+            properties: { color: '#FF0000', lineWidth: 3, title: '默认多边形', description: '默认多边形区域' }
+        }
+    ]);
     const [drawingStyle, setDrawingStyle] = useState({
         color: '#4285F4',
         lineWidth: 3
@@ -90,8 +109,7 @@ const MapboxTest = () => {
             }
         };
         setActiveGeoJson(newActiveGeoJson);
-        console.log(tool);
-        console.log(newActiveGeoJson);
+
     };
 
     const handleMapPress = (event) => {
@@ -128,7 +146,7 @@ const MapboxTest = () => {
         }
     };
 
-    const handleSaveDrawing = (drawingInfo) => {
+    const handleSaveDrawing = async (drawingInfo) => {
         if (!activeGeoJson) return;
 
         const geometryType = activeGeoJson.geometry.type;
@@ -163,7 +181,20 @@ const MapboxTest = () => {
             description: drawingInfo.description || '无描述'
         };
 
-        setSavedGeoJsons(prev => [...prev, finalizedGeoJson]);
+        let data = {
+            labelName: drawingInfo.title.trim(),
+            labelRemark: drawingInfo.description .trim(),
+            dataJson: finalizedGeoJson,
+            userId: 1
+        }
+        console.log("*************************************************");
+        console.log("data \n ",data);
+        console.log("*************************************************");
+
+        let res = saveLabelUser(data);
+        console.log("res \n ",res);
+    
+        await setSavedGeoJsons(prev => [...prev, finalizedGeoJson]);
         setActiveGeoJson(null);
         setDrawingMode(null);
     };
@@ -181,28 +212,33 @@ const MapboxTest = () => {
 
     const renderFeatures = () => {
         const features = [...savedGeoJsons];
+        if(activeGeoJson?.geometry?.coordinates[0]?.length === 0){
+            return ;
+        }
 
-        console.log("activeGeoJson \n ",activeGeoJson);
-        console.log("activeGeoJson?.geometry?.coordinates.length \n ",activeGeoJson?.geometry?.coordinates.length);
         if(activeGeoJson?.geometry?.type==="Polygon") {
-            // console.log("activeGeoJson",activeGeoJson);
-            if(activeGeoJson?.geometry?.coordinates[0]?.[0].length > 0){
+
+            if(activeGeoJson?.geometry?.coordinates[0]?.[0]?.length > 0){
                 if(activeGeoJson?.geometry?.coordinates[0]?.length > 0){
-                    if(activeGeoJson?.geometry?.coordinates[0]?.length >= 3 ) {
+                    if(activeGeoJson?.geometry?.coordinates[0]?.length > 3 ) {
                         features.push(activeGeoJson);
                     }
                 }
             }
         } else {
-            if (activeGeoJson?.geometry?.coordinates?.length > 0) {
-                features.push(activeGeoJson);
+            if(activeGeoJson?.geometry?.type === "LineString"){
+                if (activeGeoJson?.geometry?.coordinates?.length > 1) {
+
+                    features.push(activeGeoJson);
+
+                }
+            } else {
+                if (activeGeoJson?.geometry?.coordinates?.length > 0) {
+                    features.push(activeGeoJson);
+                }
             }
+
         }
-
-
-        // console.log("*************************************************");
-        // console.log("features \n ",features);
-        // console.log("*************************************************");
 
         return (
             <Mapbox.ShapeSource
@@ -260,9 +296,9 @@ const MapboxTest = () => {
         }
     };
 
-    useEffect(() => {
-        console.log("activeGeoJson \n ", activeGeoJson);
-    }, [activeGeoJson]);
+    const handleSearchPress = () => {
+        navigation.navigate('History');
+    };
 
     return (
         <View style={styles.container}>
@@ -313,6 +349,20 @@ const MapboxTest = () => {
                 <CommandCenter onClose={() => setShowCommandCenter(false)} />
             )}
 
+            <View style={styles.searchContainer}>
+                <TouchableOpacity style={styles.searchBox} onPress={handleSearchPress} activeOpacity={0.7}>
+                    <Icon name="search" size={20} color="#888" style={styles.searchIcon} />
+                    <View style={styles.searchInput}>
+                        <TextInput
+                            placeholder="搜索林班、标记"
+                            placeholderTextColor="#888"
+                            editable={false}
+                            style={styles.searchText}
+                        />
+                    </View>
+                </TouchableOpacity>
+            </View>
+
             <BottomNavBar
                 onLayersPress={() => handleBottomBarPress('layers')}
                 onLocationPress={() => handleBottomBarPress('location')}
@@ -337,6 +387,37 @@ const styles = StyleSheet.create({
         backgroundColor: '#007AFF',
         borderWidth: 2,
         borderColor: 'white',
+    },
+    searchContainer: {
+        position: 'absolute',
+        top: 50,
+        left: 15,
+        right: 15,
+        zIndex: 1,
+    },
+    searchBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'white',
+        borderRadius: 25,
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    searchIcon: {
+        marginRight: 8,
+    },
+    searchInput: {
+        flex: 1,
+    },
+    searchText: {
+        fontSize: 15,
+        color: '#333',
+        padding: 0,
     },
 });
 

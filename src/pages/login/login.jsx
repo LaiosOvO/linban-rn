@@ -97,6 +97,9 @@ const Login = ({navigation}) => {
           setButdisabled(true);
           let res = null;
           if (ValidateMail(account)) {
+            console.log("****************")
+            console.log("ceshi shuchu")
+            console.log("****************")
             res = await AccountuserLogin({account, password});
           } else {
             res = await AccountuserLogin({self_account: account, password});

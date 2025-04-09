@@ -1,34 +1,68 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
-import { Colors } from 'react-native-ui-lib';
+import React, {useEffect, useState} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
+import {Colors} from 'react-native-ui-lib';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import {labelList, page} from '../api/linban/folder/index';
 
-const AnnotationManager = ({ onClose }) => {
-  const personalAnnotations = [
-    { id: 1, name: '监测点 (12)', color: Colors.primary },
-    { id: 2, name: '临时标记 (8)', color: Colors.primary },
-  ];
+import dayjs from 'dayjs';
 
-  const companyAnnotations = [
-    { id: 3, name: '项目A-防火带 (23)', color: '#00BCD4' },
-    { id: 4, name: '项目B-区区规划 (15)', color: '#00BCD4' },
-  ];
+const AnnotationManager = ({onClose, navigation}) => {
+  const [labels, setLabels] = useState([]);
+  const [personalAnnotations, setPersonalAnnotations] = useState([
+    // { id: 1, name: '监测点 (12)', color: Colors.primary },
+    // { id: 2, name: '临时标记 (8)', color: Colors.primary },
+  ]);
 
-  const annotationCards = [
-    {
-      id: 1,
-      title: '监测点 A-12',
-      date: '2023-12-20',
-      image: require('../assets/icons/monitor.png'), // 确保有这个图片资源
-    },
-    {
-      id: 2,
-      title: '防火带 B-08',
-      date: '2023-12-19',
-      image: require('../assets/icons/fire.png'), // 确保有这个图片资源
-    },
-  ];
+  const [companyAnnotations, setCompanyAnnotations] = useState([
+    // { id: 3, name: '项目A-防火带 (23)', color: '#00BCD4' },
+    // { id: 4, name: '项目B-区区规划 (15)', color: '#00BCD4' },
+  ]);
 
+
+  useEffect(() => {
+    load();
+    loadLabels();
+  }, []);
+
+  // 加载数据
+  const load = async () => {
+    let res = await page({
+      pageNo: 1,
+      pageSize: 15,
+      userId: 1,
+    });
+
+    let list = res.data.list;
+
+    let ps = list.filter(item => {
+      return item.type == 1;
+    });
+    let cs = list.filter(item => {
+      return item.type == 2;
+    });
+
+    setPersonalAnnotations(ps);
+    setCompanyAnnotations(cs);
+
+    console.log('res', res);
+  };
+
+  const loadLabels = async () => {
+    let res = await labelList({
+      pageNo: 1,
+      pageSize: 15,
+      userId: 1,
+    });
+    setLabels(res.data.list)
+    console.log('res2==', res);
+  };
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -42,14 +76,17 @@ const AnnotationManager = ({ onClose }) => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>个人收藏夹</Text>
-            <TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                navigation.push('AddFolder');
+              }}>
               <Icon name="add" size={24} color={Colors.primary} />
             </TouchableOpacity>
           </View>
           {personalAnnotations.map(item => (
             <TouchableOpacity key={item.id} style={styles.folderItem}>
               <Icon name="folder" size={24} color={item.color} />
-              <Text style={styles.folderName}>{item.name}</Text>
+              <Text style={styles.folderName}>{item.folderName}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -64,17 +101,17 @@ const AnnotationManager = ({ onClose }) => {
           {companyAnnotations.map(item => (
             <TouchableOpacity key={item.id} style={styles.folderItem}>
               <Icon name="folder" size={24} color={item.color} />
-              <Text style={styles.folderName}>{item.name}</Text>
+              <Text style={styles.folderName}>{item.folderName}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         <View style={styles.cardsContainer}>
-          {annotationCards.map(card => (
-            <View key={card.id} style={styles.card}>
-              <Image source={card.image} style={styles.cardImage} />
-              <Text style={styles.cardTitle}>{card.title}</Text>
-              <Text style={styles.cardDate}>更新于 {card.date}</Text>
+          {labels.map(label => (
+            <View key={label.id} style={styles.card}>
+              <Image source={require("../assets/icons/default.png")} style={styles.cardImage} />
+              <Text style={styles.cardTitle}>{label.labelName}</Text>
+              <Text style={styles.cardDate}>更新于 {dayjs(label.createTime).format("MM-DD HH:mm")}</Text>
             </View>
           ))}
         </View>
@@ -92,7 +129,7 @@ const styles = StyleSheet.create({
     width: '80%',
     backgroundColor: 'white',
     shadowColor: '#000',
-    shadowOffset: { width: -2, height: 0 },
+    shadowOffset: {width: -2, height: 0},
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 5,
@@ -165,4 +202,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AnnotationManager; 
+export default AnnotationManager;

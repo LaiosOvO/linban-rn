@@ -3,8 +3,10 @@ import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import Msg from '../../pages/message/index';
 import Mate from '../../pages/mate/index';
 import User from '../../pages/user/index';
+import MapboxTest from '../../pages/MapboxTest';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AntDesign from 'react-native-vector-icons/AntDesign';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 import {Colors, TouchableOpacity} from 'react-native-ui-lib';
 import {useSelector} from 'react-redux';
@@ -14,33 +16,35 @@ const Tab = createBottomTabNavigator();
 const renderTabinfo = (name, type, focused = false) => {
   let IconName = '';
   let tablabel = '';
-  if (name === 'Msg') {
-    IconName = 'comments-o';
-    tablabel = '消息';
-    if (focused) {
-      IconName = 'comments';
-    }
+  let IconComponent = FontAwesome;
+
+  switch (name) {
+    case 'Msg':
+      IconName = focused ? 'comments' : 'comments-o';
+      tablabel = '消息';
+      break;
+    case 'Mate':
+      IconName = focused ? 'address-book' : 'address-book-o';
+      tablabel = '好友';
+      break;
+    case 'Map':
+      IconComponent = MaterialIcons;
+      IconName = focused ? 'map' : 'map-o';
+      tablabel = '地图';
+      break;
+    case 'User':
+      IconName = focused ? 'user' : 'user-o';
+      tablabel = '我的';
+      break;
   }
-  if (name === 'Mate') {
-    IconName = 'address-book-o';
-    tablabel = '好友';
-    if (focused) {
-      IconName = 'address-book';
-    }
-  }
-  if (name === 'User') {
-    IconName = 'user-o';
-    tablabel = '我的';
-    if (focused) {
-      IconName = 'user';
-    }
-  }
+
   if (type === 'icon') {
-    return IconName;
+    return {IconName, IconComponent};
   }
   if (type === 'label') {
     return tablabel;
   }
+  return null;
 };
 
 const TabScreen = () => {
@@ -52,17 +56,17 @@ const TabScreen = () => {
       screenOptions={({route}) => ({
         tabBarLabel: renderTabinfo(route.name, 'label'),
         tabBarActiveTintColor: themeColor,
-        tabBarIcon: ({focused}) => (
-          <FontAwesome
-            name={renderTabinfo(route.name, 'icon', focused)}
-            color={focused ? themeColor : Colors.black}
-            size={20}
-          />
-        ),
+        tabBarInactiveTintColor: Colors.grey40,
+        tabBarIcon: ({focused, color, size}) => {
+          const {IconName, IconComponent} = renderTabinfo(route.name, 'icon', focused);
+          if (!IconName) return null;
+          return <IconComponent name={IconName} color={color} size={size} />;
+        },
         headerShown: !isFullScreen,
         headerStyle: {backgroundColor: themeColor, height: 46},
         headerTitleAlign: 'center',
         headerTitleStyle: {fontSize: 16, color: Colors.white},
+        tabBarStyle: isFullScreen ? {display: 'none'} : {},
       })}>
       <Tab.Screen
         name="Msg"
@@ -92,6 +96,14 @@ const TabScreen = () => {
           ),
         })}
         component={Mate}
+      />
+      <Tab.Screen
+        name="Map"
+        component={MapboxTest}
+        options={{
+          title: '地图',
+          headerShown: false,
+        }}
       />
       <Tab.Screen
         name="User"

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { getLabelUserPage, saveLabelUser,deleteLabelUser,listLabelUserPage } from '../api/linban/label/index'
 
 const DrawingTools = ({ 
     visible, 
@@ -16,13 +17,29 @@ const DrawingTools = ({
     const [userLabel, setUserLabel] = useState([]);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
+    
+    // TODO 获取用户自己的id从store里面
+    const loadData = async () => {
+        try{
+            let params = {
+                pageNum: 1,
+                pageSize: 100,
+                userId: 1
+            }
+
+            let res = await listLabelUserPage(params);
+            
+            setUserLabel(res.data)
+        }catch(error){
+            console.log('获取标注数据失败:', error);
+        }
+    }
 
     useEffect(() => {
+        loadData()
         const fetchData = async () => {
             try {
                 const mockData = [
-                    { id: 1, labelName: '标注1', dataJson: JSON.stringify(savedFeatures) },
-                    { id: 2, labelName: '标注2', dataJson: JSON.stringify(savedFeatures) }
                 ];
                 setUserLabel(mockData);
             } catch (error) {
@@ -41,26 +58,44 @@ const DrawingTools = ({
         { id: 'polygon', name: '多边形', icon: 'crop-square', type: 'Polygon' },
     ];
 
-    const handleSave = () => {
+    useEffect(() => {
+        // console.log('savedFeatures has changed:', savedFeatures);
+        // 在这里可以执行一些操作，比如更新本地状态或执行其他逻辑
+    }, [savedFeatures]);
+
+    const handleSave = async () => {
         if (!title.trim()) {
             Alert.alert('提示', '请输入标注名称');
             return;
         }
 
-        onSave({
+        await onSave({
             title: title.trim(),
             description: description.trim()
         });
 
-        
+
+
+        onCancel();
+        onClearMapData();
+        loadData();
+
         setTitle('');
         setDescription('');
     };
 
     const handleSelectGeoJson = (item) => {
         try {
-            const features = JSON.parse(item.dataJson);
-            onSetSavedFeatures(features);
+            console.log("*************************************************");
+            console.log(item)
+            console.log(item.dataJson.geometry.coordinates)
+            console.log("*************************************************");
+
+            const features = item.dataJson;
+            console.log("*************************************************");
+            console.log(features)
+            console.log("*************************************************");
+            onSetSavedFeatures([features]);
         } catch (e) {
             console.error('解析GeoJSON失败:', e);
             Alert.alert('错误', '解析标注数据失败');

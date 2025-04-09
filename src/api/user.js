@@ -1,5 +1,8 @@
 import instance from '../utils/request/http';
 
+console.log("****************")
+console.log(instance.baseURL);
+console.log("****************")
 // 用户注册
 export const userRegMail = form => instance.post('api/user/reg', form);
 
@@ -11,7 +14,12 @@ export const getCodeBymail = account =>
 export const mailValidate = form => instance.post('api/user/validate', form);
 
 // 账号登录
-export const AccountuserLogin = form => instance.post('api/user/login', form);
+export const AccountuserLogin = form => {
+  instance.post('api/user/login', form)
+  console.log("****************")
+  console.log(instance.baseURL);
+  console.log("****************")
+};
 
 // 验证码登录
 export const CodeuserLogin = form => instance.post('api/user/codelogin', form);

@@ -5,7 +5,7 @@ import {clearUserStore} from '../../stores/store-slice/userStore.js';
 import {requestBaseConfig} from '../../stores/store-slice/baseConfigStore.js';
 import {setErrorMsg} from '../../stores/store-slice/errorMsgStore.js';
 
-const {BASE_URL} = store.getState().baseConfigStore.baseConfig;
+const BASE_URL = "http://8.130.186.54:3000/"
 
 // 创建axios实例
 console.log('BASE_URL ',BASE_URL);
@@ -15,9 +15,18 @@ const instance = axios.create({
   timeout: 18000,
 });
 
+console.log(instance.baseURL)
+
 // 添加请求拦截器
 instance.interceptors.request.use(
   function (config) {
+    console.log('请求配置：', {
+      url: config.url,
+      method: config.method,
+      baseURL: config.baseURL,
+      headers: config.headers
+    });
+
     const userToken = store.getState().userStore.userToken;
     if (userToken) {
       config.headers.Authorization = 'Bearer ' + userToken; // 让每个请求携带自定义token
@@ -42,6 +51,12 @@ instance.interceptors.response.use(
 
   function (error) {
     console.log(error);
+    console.log('错误详情：', {
+      message: error.message,
+      code: error.code,
+      response: error.response,
+      config: error.config,
+    });
 
     let {message} = error;
     if (message === 'Network Error') {
